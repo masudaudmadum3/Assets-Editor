@@ -1,0 +1,54 @@
+name: Build Assets Editor (.NET Modern)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - "**"
+      - ".github/workflows/build-assets-editor.yml"
+
+jobs:
+  build:
+    name: Build Windows Release
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+
+      # Instala o .NET Moderno conforme o README pede (.NET 8 e versões futuras)
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.x
+            9.x
+            10.x
+          # O include-prerelease é importante se o .NET 10 for uma versão de teste (Preview)
+          include-prerelease: true
+
+      # Restaura dependências e compila em um passo só usando 'publish'
+      # O comando 'publish' gera o .exe e coloca todas as DLLs numa pasta só.
+      - name: Publish Application
+        run: |
+          # Procura o arquivo de solução (.sln) ou projeto (.csproj)
+          # O comando abaixo compila em modo Release e joga tudo na pasta 'out'
+          dotnet publish -c Release -r win-x64 --self-contained false -o out
+
+      # Copia arquivos extras que o compilador pode esquecer (como o Appearances.xml se ele não estiver marcado para copiar)
+      - name: Copy Extra Assets
+        shell: pwsh
+        run: |
+          # Se existir um Appearances.xml na raiz, copia para a pasta de saída
+          if (Test-Path "Appearances.xml") {
+              Copy-Item "Appearances.xml" -Destination "out/" -Force
+          }
+          # Lista arquivos para garantir que deu certo
+          Get-ChildItem -Path "out"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: assets-editor-modern
+          path: out/*
