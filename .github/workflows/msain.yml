@@ -1,4 +1,4 @@
-name: Build Assets Editor (.NET Modern)
+name: Build Assets Editor (Fixed Path)
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout do Repositório
         uses: actions/checkout@v4
 
-      # Instala o .NET Moderno conforme o README pede (.NET 8 e versões futuras)
+      # Configura .NET 8, 9 e 10 (Removi o 'include-prerelease' que dava aviso)
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -25,26 +25,25 @@ jobs:
             8.x
             9.x
             10.x
-          # O include-prerelease é importante se o .NET 10 for uma versão de teste (Preview)
-          include-prerelease: true
 
-      # Restaura dependências e compila em um passo só usando 'publish'
-      # O comando 'publish' gera o .exe e coloca todas as DLLs numa pasta só.
+      # AQUI ESTAVA O ERRO:
+      # O comando agora aponta explicitamente para "Assets Editor/Assets Editor.sln"
+      # As aspas são importantes porque a pasta tem um espaço no nome.
       - name: Publish Application
         run: |
-          # Procura o arquivo de solução (.sln) ou projeto (.csproj)
-          # O comando abaixo compila em modo Release e joga tudo na pasta 'out'
-          dotnet publish -c Release -r win-x64 --self-contained false -o out
+          dotnet publish "Assets Editor/Assets Editor.sln" -c Release -r win-x64 --self-contained false -o out
 
-      # Copia arquivos extras que o compilador pode esquecer (como o Appearances.xml se ele não estiver marcado para copiar)
+      # Copia arquivos extras (se existirem)
       - name: Copy Extra Assets
         shell: pwsh
         run: |
-          # Se existir um Appearances.xml na raiz, copia para a pasta de saída
-          if (Test-Path "Appearances.xml") {
-              Copy-Item "Appearances.xml" -Destination "out/" -Force
+          # Verifica se existe o XML na pasta do projeto e copia para a saída
+          if (Test-Path "Assets Editor/Appearances.xml") {
+              Copy-Item "Assets Editor/Appearances.xml" -Destination "out/" -Force
+              Write-Host "Appearances.xml copiado."
           }
-          # Lista arquivos para garantir que deu certo
+          
+          # Lista para conferência
           Get-ChildItem -Path "out"
 
       - name: Upload Artifact
